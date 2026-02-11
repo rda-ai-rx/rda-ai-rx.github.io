@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>개인 리포트 확인</title>
+  <style>
+    :root { --maxw: 980px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", Arial, sans-serif; margin: 0; padding: 0; }
+    .wrap { max-width: var(--maxw); margin: 24px auto; padding: 0 18px; }
+    h1 { font-size: 44px; margin: 0 0 18px; font-weight: 800; }
+    .desc { font-size: 18px; line-height: 1.6; color: #333; margin: 0 0 18px; }
+    .label { font-size: 22px; font-weight: 800; margin: 14px 0 10px; }
+    input[type="text"]{
+      width: 100%;
+      font-size: 22px;
+      padding: 18px 16px;
+      border: 1px solid #cfcfcf;
+      border-radius: 4px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    input[type="text"]:focus{ border-color:#888; }
+    button{
+      width: 100%;
+      margin-top: 18px;
+      font-size: 24px;
+      padding: 18px 16px;
+      border: 1px solid #bdbdbd;
+      background: #efefef;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button:hover{ background:#e8e8e8; }
+    #msg { margin-top: 14px; font-size: 16px; color: #c62828; }
+    .hint { color:#666; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>개인 리포트 확인</h1>
+
+    <p class="desc">
+      비밀번호(개인코드)를 입력하세요.<br>
+      <span class="hint">예) 홍길동1234 (이름 공백 없이 + 휴대폰 뒷4자리)</span>
+    </p>
+
+    <div class="label">비밀번호</div>
+    <input id="code" type="text" placeholder="예: 홍길동1234" autocomplete="off" autocapitalize="none" spellcheck="false" />
+    <button id="btn" type="button">확인</button>
+
+    <div id="msg"></div>
+  </div>
+
+<script>
+async function sha256(message){
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function go(){
+  const msgEl = document.getElementById("msg");
+  msgEl.innerText = "";
+
+  const input = document.getElementById("code").value.trim().replace(/\s+/g,'');
+  if(!input){
+    msgEl.innerText = "비밀번호(개인코드)를 입력하세요.";
+    return;
+  }
+
+  const hash = await sha256(input);
+
+  try{
+    const res = await fetch("./mapping.json", { cache: "no-store" });
+    if(!res.ok) throw new Error("mapping.json not found");
+    const data = await res.json();
+
+    if(data[hash]){
+      window.location.href = data[hash];
+    }else{
+      msgEl.innerText = "일치하는 리포트가 없습니다. (중복/누락 농가는 별도 안내 링크를 사용해주세요.)";
+    }
+  }catch(e){
+    msgEl.innerText = "데이터 로딩 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+  }
+}
+
+document.getElementById("btn").addEventListener("click", go);
+document.getElementById("code").addEventListener("keydown", (e) => {
+  if(e.key === "Enter") go();
+});
+</script>
+</body>
+</html>
